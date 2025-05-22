@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Migration Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container-fluid py-3">
+        <header class="border-bottom mb-3">
+            <h1 class="h2 mb-3">Database Migration Tool</h1>
+        </header>
+        
+        <div class="row">
+            <!-- Source Database Connection Panel -->
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h2 class="h5 mb-0">Source Database</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="source-connection-form">
+                            <div class="mb-3">
+                                <label for="source-db-type" class="form-label">Database Type</label>
+                                <select class="form-select" id="source-db-type">
+                                    <option value="">Select Database Type</option>
+                                    <option th:each="dbType : ${dbTypes}" th:value="${dbType.toLowerCase()}" th:text="${dbType}"></option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="source-host" class="form-label">Host</label>
+                                <input type="text" class="form-control" id="source-host" placeholder="localhost">
+                            </div>
+                            <div class="mb-3">
+                                <label for="source-port" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="source-port" placeholder="3306">
+                            </div>
+                            <div class="mb-3">
+                                <label for="source-db-name" class="form-label">Database Name</label>
+                                <input type="text" class="form-control" id="source-db-name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="source-username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="source-username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="source-password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="source-password">
+                            </div>
+                            <!-- SAP HANA specific fields -->
+                            <div id="source-hana-fields" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="source-instance-number" class="form-label">Instance Number</label>
+                                    <input type="text" class="form-control" id="source-instance-number" placeholder="00">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <button type="button" class="btn btn-primary" id="source-test-connection">
+                                    <i class="fas fa-plug"></i> Test Connection
+                                </button>
+                                <button type="button" class="btn btn-success" id="source-get-tables" disabled>
+                                    <i class="fas fa-table"></i> Get Tables
+                                </button>
+                            </div>
+                            <div id="source-connection-message" class="alert" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Source Table Selection -->
+                <div class="card mb-3">
+                    <div class="card-header bg-secondary text-white">
+                        <h3 class="h5 mb-0">Source Table</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="source-tables" class="form-label">Select Table</label>
+                            <select class="form-select" id="source-tables" disabled>
+                                <option value="">Select a table</option>
+                            </select>
+                        </div>
+                        <div id="source-columns-container" style="display: none;">
+                            <div class="mb-3">
+                                <label class="form-label">Select Columns</label>
+                                <div class="d-flex justify-content-end mb-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="select-all-columns">Select All</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" id="deselect-all-columns">Deselect All</button>
+                                </div>
+                                <div id="source-columns" class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                    <!-- Columns will be loaded here -->
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="where-clause" class="form-label">WHERE Clause (Optional)</label>
+                                <input type="text" class="form-control" id="where-clause" placeholder="e.g., id > 1000">
+                                <small class="form-text text-muted">Enter a condition to filter source data</small>
+                            </div>
+                            <div class="mb-3">
+                                <button type="button" class="btn btn-info" id="count-records">
+                                    <i class="fas fa-calculator"></i> Count Records
+                                </button>
+                                <span id="record-count-display" class="ms-2"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Target Database Connection Panel -->
+            <div class="col-md-6">
+                <div class="card mb-3">
+                    <div class="card-header bg-success text-white">
+                        <h2 class="h5 mb-0">Target Database</h2>
+                    </div>
+                    <div class="card-body">
+                        <div id="target-connection-form">
+                            <div class="mb-3">
+                                <label for="target-db-type" class="form-label">Database Type</label>
+                                <select class="form-select" id="target-db-type">
+                                    <option value="">Select Database Type</option>
+                                    <option th:each="dbType : ${dbTypes}" th:value="${dbType.toLowerCase()}" th:text="${dbType}"></option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="target-host" class="form-label">Host</label>
+                                <input type="text" class="form-control" id="target-host" placeholder="localhost">
+                            </div>
+                            <div class="mb-3">
+                                <label for="target-port" class="form-label">Port</label>
+                                <input type="number" class="form-control" id="target-port" placeholder="3306">
+                            </div>
+                            <div class="mb-3">
+                                <label for="target-db-name" class="form-label">Database Name</label>
+                                <input type="text" class="form-control" id="target-db-name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="target-username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="target-username">
+                            </div>
+                            <div class="mb-3">
+                                <label for="target-password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="target-password">
+                            </div>
+                            <!-- SAP HANA specific fields -->
+                            <div id="target-hana-fields" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="target-instance-number" class="form-label">Instance Number</label>
+                                    <input type="text" class="form-control" id="target-instance-number" placeholder="00">
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-between mb-3">
+                                <button type="button" class="btn btn-primary" id="target-test-connection">
+                                    <i class="fas fa-plug"></i> Test Connection
+                                </button>
+                                <button type="button" class="btn btn-success" id="target-get-tables" disabled>
+                                    <i class="fas fa-table"></i> Get Tables
+                                </button>
+                            </div>
+                            <div id="target-connection-message" class="alert" style="display: none;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Target Table Options -->
+                <div class="card mb-3">
+                    <div class="card-header bg-warning text-dark">
+                        <h3 class="h5 mb-0">Target Table Options</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="target-table-name" class="form-label">Target Table Name</label>
+                            <input type="text" class="form-control" id="target-table-name">
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="create-target-table" checked>
+                                <label class="form-check-label" for="create-target-table">
+                                    Create target table if it doesn't exist
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="truncate-target-table">
+                                <label class="form-check-label" for="truncate-target-table">
+                                    Truncate target table before migration
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="batch-size" class="form-label">Batch Size</label>
+                            <input type="number" class="form-control" id="batch-size" value="1000" min="1">
+                            <small class="form-text text-muted">Number of records to process in each batch</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Migration Button and Progress Section -->
+        <div class="card mb-3">
+            <div class="card-header bg-dark text-white">
+                <h2 class="h5 mb-0">Migration</h2>
+            </div>
+            <div class="card-body text-center">
+                <button type="button" class="btn btn-lg btn-primary" id="start-migration">
+                    <i class="fas fa-exchange-alt"></i> Start Migration
+                </button>
+                
+                <div id="migration-progress" class="mt-4" style="display: none;">
+                    <h4>Migration in Progress</h4>
+                    <div class="progress mb-3">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                    </div>
+                    <div id="migration-status"></div>
+                </div>
+                
+                <div id="migration-result" class="mt-4" style="display: none;">
+                    <h4>Migration Results</h4>
+                    <div class="alert" id="migration-result-message"></div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body text-center">
+                                    <h5>Total Records</h5>
+                                    <span id="total-records" class="h3 d-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h5>Migrated Records</h5>
+                                    <span id="migrated-records" class="h3 d-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h5>Failed Records</h5>
+                                    <span id="failed-records" class="h3 d-block"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <p>Execution Time: <span id="execution-time"></span> seconds</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
